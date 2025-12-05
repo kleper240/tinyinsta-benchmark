@@ -93,15 +93,27 @@ python3 CreatePlots.py
 ## Analyse des Résultats
 
 ### Fichier `conc.csv` - Benchmark Concurrence
-Exemple de contenu :
+Contenu complet :
 ```csv
 PARAM,AVG_TIME,RUN,FAILED
-1,1457.25ms,1,0
-1,131.68ms,2,0
-1,85.35ms,3,0
-10,500.02ms,1,0
-...
-1000,2692.96ms,3,0
+1,153.24ms,1,0
+1,140.82ms,2,0
+1,129.56ms,3,0
+10,426.58ms,1,0
+10,326.88ms,2,0
+10,245.17ms,3,0
+20,394.87ms,1,0
+20,336.30ms,2,0
+20,363.09ms,3,0
+50,482.58ms,1,0
+50,356.28ms,2,0
+50,363.21ms,3,0
+100,520.83ms,1,0
+100,510.03ms,2,0
+100,487.78ms,3,0
+1000,2725.09ms,1,0
+1000,1417.71ms,2,0
+1000,1449.23ms,3,0
 ```
 
 **Interprétation** :  
@@ -110,45 +122,87 @@ PARAM,AVG_TIME,RUN,FAILED
 - `RUN` : Numéro de l'exécution (1, 2, 3).  
 - `FAILED` : Nombre de requêtes échouées (0 = succès).  
 
+**Moyennes par niveau de concurrence** (calculées sur 3 runs) :  
+| PARAM | Moyenne (ms) |  
+|-------|--------------|  
+| 1     | 141.21      |  
+| 10    | 332.88      |  
+| 20    | 364.75      |  
+| 50    | 400.69      |  
+| 100   | 506.21      |  
+| 1000  | 1864.01     |  
+
 **Observations** :  
-- Variance importante à faible charge (cold start).  
-- Performance stable entre 10-100 utilisateurs.  
-- Dégradation à 1000 utilisateurs simultanés.  
-- Aucun échec sur l'ensemble des tests.
+- Les temps de réponse augmentent progressivement avec le niveau de concurrence, indiquant une scalabilité raisonnable jusqu'à 100 utilisateurs simultanés.  
+- Stabilité relative entre 20 et 100 utilisateurs (augmentation modérée de ~40 %).  
+- Dégradation significative à 1000 utilisateurs (x4 par rapport à 100), probablement due à la saturation des ressources Cloud Run.  
+- Variance notable à faible charge (cold starts), mais performances plus consistantes à charge élevée.  
+- Aucune erreur (FAILED = 0 partout), confirmant la robustesse de l'application.
 
 ### Fichier `post.csv` - Benchmark Posts
-Exemple de contenu :
+Contenu partiel (en attente du run à 1000 posts/utilisateur pour 1M posts total) :
 ```csv
 PARAM,AVG_TIME,RUN,FAILED
-10,3191.36ms,1,0
-10,890.74ms,2,0
-10,822.45ms,3,0
-100,286.93ms,1,0
-...
-1000,261.09ms,3,0
+10,833.43ms,1,0
+10,404.88ms,2,0
+10,346.01ms,3,0
+100,1477.90ms,1,0
+100,406.37ms,2,0
+100,312.65ms,3,0
 ```
 
 **Interprétation** :  
-- `PARAM` : Nombre de posts par utilisateur.  
-- Résultat contre-intuitif : plus de posts = meilleures performances.  
-- Problème d'optimisation avec petits datasets.
+- `PARAM` : Nombre de posts par utilisateur (10 → 10k posts total ; 100 → 100k posts total).  
+- `AVG_TIME` : Temps moyen de réponse en millisecondes.  
+- `RUN` : Numéro de l'exécution (1, 2, 3).  
+- `FAILED` : Nombre de requêtes échouées (0 = succès).  
+
+**Moyennes par niveau de posts** (calculées sur 3 runs) :  
+| PARAM | Moyenne (ms) |  
+|-------|--------------|  
+| 10    | 528.11      |  
+| 100   | 732.31      |  
+
+**Observations (préliminaires)** :  
+- Les temps de réponse augmentent avec la taille du dataset (de 10k à 100k posts), ce qui est attendu en raison du volume de données à charger dans Firestore.  
+- Variance élevée au premier run (cold start), mais stabilisation rapide aux runs suivants.  
+- Résultat contre-intuitif potentiel : performances légèrement meilleures avec datasets plus grands une fois "chaud" (à confirmer avec le run 1M).  
+- Aucune erreur observée.  
+- **Note** : Analyse complète en attente du run à 1000 posts/utilisateur (1M posts total).
 
 ### Fichier `fanout.csv` - Benchmark Followers
-Exemple de contenu :
+Contenu complet :
 ```csv
 PARAM,AVG_TIME,RUN,FAILED
-10,2347.20ms,1,0
-10,314.74ms,2,0
-10,270.34ms,3,0
-50,3314.85ms,1,0
-...
-100,3628.96ms,3,0
+10,1446.10ms,1,0
+10,451.47ms,2,0
+10,371.43ms,3,0
+50,7332.64ms,1,0
+50,5092.80ms,2,0
+50,5237.97ms,3,0
+100,12156.92ms,1,0
+100,10600.65ms,2,0
+100,6335.95ms,3,0
 ```
 
 **Interprétation** :  
-- `PARAM` : Nombre de followers par utilisateur.  
-- Croissance linéaire du temps avec le nombre de followers.  
-- Impact important sur les performances.
+- `PARAM` : Nombre de followees par utilisateur (impact sur le fanout lors de la génération de la timeline).  
+- `AVG_TIME` : Temps moyen de réponse en millisecondes.  
+- `RUN` : Numéro de l'exécution (1, 2, 3).  
+- `FAILED` : Nombre de requêtes échouées (0 = succès).  
+
+**Moyennes par niveau de followees** (calculées sur 3 runs) :  
+| PARAM | Moyenne (ms) |  
+|-------|--------------|  
+| 10    | 756.33      |  
+| 50    | 5887.80     |  
+| 100   | 9697.84     |  
+
+**Observations** :  
+- Croissance quasi-linéaire du temps de réponse avec le nombre de followees : x8 entre 10 et 50, puis +65 % jusqu'à 100.  
+- Impact majeur du fanout sur les performances, car chaque timeline doit agréger plus de posts de sources multiples.  
+- Variance importante au premier run (cold start), mais convergence aux runs suivants.  
+- Aucune erreur, mais temps élevés à 100 followees (>9s en moyenne) indiquent un besoin d'optimisation (ex. : pagination ou cache).  
 
 ## Résultats du Benchmark
 
@@ -181,25 +235,26 @@ ls -la out/*.png
 ## Conclusions Techniques
 
 ### Points Forts
-- **Robustesse** : 0 échec sur 18+ configurations testées.  
-- **Scalabilité** : Bonne performance jusqu'à 100 utilisateurs simultanés.  
-- **Gestion des données** : Excellente avec volumes importants.
+- **Robustesse** : 0 échec sur l'ensemble des tests (18+ configurations).  
+- **Scalabilité en concurrence** : Excellente jusqu'à 100 utilisateurs simultanés (temps <500 ms).  
+- **Gestion des données** : Stable même avec datasets volumineux (préliminaire pour posts).
 
 ### Points d'Amélioration
-- **Cold start** : Variance importante à faible charge.  
-- **Optimisation fanout** : Impact linéaire des followers.  
-- **Petits datasets** : Performance anormale avec peu de données.
+- **Cold starts** : Variance élevée à faible charge et premier run ; implémenter un warm-up.  
+- **Fanout** : Impact linéaire critique (x12 entre 10 et 100 followees) ; optimiser avec cache ou sharding.  
+- **Datasets intermédiaires** : Temps plus longs pour petits/moyens volumes (à confirmer avec 1M posts) ; investiguer les queries Firestore.
 
 ### Recommandations
-- Implémenter un cache pour les timelines fréquentes.  
-- Limiter le nombre maximum de followers par utilisateur.  
-- Pré-chauffer l'application avant utilisation.
+- Ajouter un cache Redis/Memcached pour les timelines statiques.  
+- Limiter le fanout max par utilisateur (ex. : 50 followees).  
+- Utiliser des indexes Firestore optimisés et pagination pour les gros datasets.  
+- Pré-chauffer l'instance Cloud Run pour réduire les latences initiales.
 
 ## Auteur
 - **Étudiant** : Marius Mabulu  
 - **Projet** : DONNÉES MASSIVES ET CLOUD - BENCHMARK  
-- **Date** : Novembre 2025  
+- **Date** : Décembre 2025  
 - **Dépôt Git** : https://github.com/kleper240/tinyinsta-benchmark  
-- **Dernière exécution** : 17 novembre 2025  
+- **Dernière exécution** : 6 décembre 2025  
 
 **Pour toute question** : Consulter le code source et les commentaires dans les scripts Python.
