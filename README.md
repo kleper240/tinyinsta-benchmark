@@ -4,123 +4,96 @@
 Benchmark complet de l'application TinyInsta pour analyser les performances sous différentes charges de concurrence et tailles de données.
 
 ## Application Déployée
-URL : https://tinyinsta-benchmark-478021.ew.r.appspot.com
+- **URL** : https://tinyinsta-benchmark-478021.ew.r.appspot.com
 
-## GUIDE COMPLET D'EXÉCUTION
+## Guide Complet d'Exécution
 
 ### Structure du Projet
 ```
 tinyinsta-benchmark/
-├── benchmark.py              # Benchmark principal - concurrence
-├── benchmark_posts.py        # Benchmark variation posts
-├── benchmark_followers.py    # Benchmark variation followers  
-├── create_plots_fixed.py     # Génération des graphiques
-├── generate_data.py          # Génération données (optionnel)
-├── README.md                 # Documentation
-└── out/                      # Résultats
-    ├── conc.csv              # Données benchmark concurrence
-    ├── post.csv              # Données benchmark posts
-    ├── fanout.csv            # Données benchmark followers
-    ├── conc.png              # Graphique concurrence
-    ├── post.png              # Graphique posts
-    └── fanout.png            # Graphique followers
+├── ConcurrencyBenchmark.py      # Benchmark principal - concurrence
+├── PostsBenchmark.py            # Benchmark variation posts
+├── FollowersBenchmark.py        # Benchmark variation followers
+├── CreatePlots.py               # Génération des graphiques
+├── delete_data.py               # Suppression des données
+├── run_benchmark_suite.sh       # Automatisation : génération données, benchmarks (concurrence, posts, followers) et graphiques
+├── README.md                    # Documentation
+└── out/                         # Résultats
+    ├── conc.csv                 # Données benchmark concurrence
+    ├── post.csv                 # Données benchmark posts
+    ├── fanout.csv               # Données benchmark followers
+    ├── conc.png                 # Graphique concurrence
+    ├── post.png                 # Graphique posts
+    └── fanout.png               # Graphique followers
 ```
 
-### PROCÉDURE D'EXÉCUTION COMPLÈTE
+### Procédure d'Exécution Complète
 
-#### ÉTAPE 1 : PRÉPARATION DE L'ENVIRONNEMENT
+#### Étape 1 : Préparation de l'Environnement
+1. **Cloner les projets nécessaires**  
+   Ouvrez Cloud Shell (ou une machine avec Git et Python installés) et exécutez :
+   ```bash
+   git clone https://github.com/momo54/massive-gcp.git
+   git clone https://github.com/kleper240/tinyinsta-benchmark.git
+   ```
+
+2. **Créer le dossier de sortie**  
+   ```bash
+   mkdir -p tinyinsta-benchmark/out
+   ```
+
+3. **Naviguer dans le dossier du projet**  
+   ```bash
+   cd tinyinsta-benchmark
+   ```
+
+4. **Installer les dépendances Python**  
+   ```bash
+   pip3 install requests pandas matplotlib concurrent.futures
+   ```
+
+**Explication** :  
+- `git clone` récupère le code depuis GitHub.  
+- `pip3 install` installe les librairies pour les requêtes HTTP, l'analyse de données et la visualisation.
+
+#### Étape 2 : Lancement de la Suite de Benchmarks
+1. **Rendre le script Bash exécutable**  
+   ```bash
+   chmod +x run_benchmark_suite.sh
+   ```
+
+2. **Lancer le benchmark complet**  
+   ```bash
+   ./run_benchmark_suite.sh
+   ```
+
+**Ce que fait le script** :  
+- Génère les données via `seed.py` (dans `massive-gcp/`).  
+- Exécute les benchmarks : concurrence (`ConcurrencyBenchmark.py`), posts (`PostsBenchmark.py`), followers (`FollowersBenchmark.py`).  
+- Envoie des requêtes HTTP concurrentes à `/api/timeline?user=XXX`.  
+- Mesure les temps de réponse et teste différentes configurations.  
+- Génère les fichiers CSV dans `out/`.  
+
+Tout est automatisé. Le script nettoie les anciens résultats et réinitialise la base de données.
+
+#### Étape 3 : Génération des Graphiques (Automatique)
+Les graphiques sont générés automatiquement à la fin du script via `CreatePlots.py`.  
+Si besoin de les régénérer manuellement :  
 ```bash
-# Se connecter à Cloud Shell et cloner le projet du profersseur 
-git [clone https://github.com/kleper240/tinyinsta-benchmark.git](https://github.com/momo54/massive-gcp.git)
-](https://github.com/momo54/massive-gcp.git)
-```
-```bash
-cree un fichier tinyinsta-benchmark et out
-mkdir -r tinyinsta-benchmark/out
-```
+python3 CreatePlots.py
+```  
+→ Génère `out/conc.png`, `out/post.png`, `out/fanout.png`.
 
-```bash
-cd tinyinsta-benchmark
-```
+**Explication** :  
+- Lit les fichiers CSV avec Pandas.  
+- Calcule moyennes et écarts-types.  
+- Crée des graphiques en barres avec Matplotlib.  
+- Affiche la variance entre les 3 runs.
 
-```bash
-# Installer les dépendances Python
-pip3 install requests pandas matplotlib concurrent.futures
-```
+## Analyse des Résultats
 
-**Explication :**
-* `git clone` : Récupère le code depuis GitHub
-* `pip3 install` : Installe les librairies pour les requêtes HTTP, l'analyse de données et la visualisation
-
-#### ÉTAPE 2 : GÉNÉRATION DES DONNÉES DE TEST
-```bash
-# Aller dans le dossier de l'application
-cd ~/massive-gcp
-
-# 1. Données pour le benchmark de CONCURRENCE
-python3 seed.py --users 1000 --posts 50000 --follows-min 20 --follows-max 20 --prefix bench
-sleep 30
-
-# 2. Données pour le benchmark des POSTS
-python3 seed.py --users 100 --posts 1000 --follows-min 20 --follows-max 20 --prefix post10_
-python3 seed.py --users 100 --posts 10000 --follows-min 20 --follows-max 20 --prefix post100_  
-python3 seed.py --users 100 --posts 100000 --follows-min 20 --follows-max 20 --prefix post1000_
-sleep 30
-
-# 3. Données pour le benchmark des FOLLOWERS
-python3 seed.py --users 100 --posts 100 --follows-min 10 --follows-max 10 --prefix follow10_
-python3 seed.py --users 100 --posts 100 --follows-min 50 --follows-max 50 --prefix follow50_
-python3 seed.py --users 100 --posts 100 --follows-min 100 --follows-max 100 --prefix follow100_
-sleep 30
-```
-
-**Explication des paramètres :**
-* `--users X` : Crée X utilisateurs (user1, user2, ...)
-* `--posts Y` : Crée Y posts au total répartis aléatoirement
-* `--follows-min/max Z` : Chaque user suit entre Z et Z autres users
-* `--prefix P` : Préfixe pour les noms d'utilisateurs
-* `sleep 30` : Attend l'indexation des données dans Datastore
-
-#### ÉTAPE 3 : EXÉCUTION DES BENCHMARKS
-```bash
-# Retourner dans le dossier benchmark
-cd ~/tinyinsta-benchmark
-
-# 1. BENCHMARK DE CONCURRENCE
-python3 benchmark.py
-# → Génère out/conc.csv
-
-# 2. BENCHMARK NOMBRE DE POSTS  
-python3 benchmark_posts.py
-# → Génère out/post.csv
-
-# 3. BENCHMARK NOMBRE DE FOLLOWERS
-python3 benchmark_followers.py
-# → Génère out/fanout.csv
-```
-
-**Ce que font les scripts :**
-* Envoient des requêtes HTTP concurrentes à l'application
-* Mesurent les temps de réponse pour `/api/timeline?user=XXX`
-* Testent différentes configurations (concurrence, taille données)
-* Génèrent les fichiers CSV avec les résultats
-
-#### ÉTAPE 4 : GÉNÉRATION DES GRAPHIQUES
-```bash
-# Créer les visualisations à partir des données CSV
-python3 create_plots_fixed.py
-# → Génère out/conc.png, out/post.png, out/fanout.png
-```
-
-**Explication :**
-* Lit les fichiers CSV avec pandas
-* Calcule moyennes et écarts-types
-* Crée des graphiques barres avec matplotlib
-* Affiche la variance entre les 3 runs
-
-## ANALYSE DES RÉSULTATS
-
-### Fichier conc.csv - Benchmark Concurrence
+### Fichier `conc.csv` - Benchmark Concurrence
+Exemple de contenu :
 ```csv
 PARAM,AVG_TIME,RUN,FAILED
 1,1457.25ms,1,0
@@ -131,19 +104,20 @@ PARAM,AVG_TIME,RUN,FAILED
 1000,2692.96ms,3,0
 ```
 
-**Interprétation :**
-* `PARAM` : Nombre d'utilisateurs simultanés
-* `AVG_TIME` : Temps moyen de réponse en millisecondes
-* `RUN` : Numéro de l'exécution (1, 2, 3)
-* `FAILED` : Nombre de requêtes échouées (0 = succès)
+**Interprétation** :  
+- `PARAM` : Nombre d'utilisateurs simultanés.  
+- `AVG_TIME` : Temps moyen de réponse en millisecondes.  
+- `RUN` : Numéro de l'exécution (1, 2, 3).  
+- `FAILED` : Nombre de requêtes échouées (0 = succès).  
 
-**Observations :**
-* Variance importante à faible charge (cold start)
-* Performance stable entre 10-100 utilisateurs
-* Dégradation à 1000 utilisateurs simultanés
-* Aucun échec sur l'ensemble des tests
+**Observations** :  
+- Variance importante à faible charge (cold start).  
+- Performance stable entre 10-100 utilisateurs.  
+- Dégradation à 1000 utilisateurs simultanés.  
+- Aucun échec sur l'ensemble des tests.
 
-### Fichier post.csv - Benchmark Posts
+### Fichier `post.csv` - Benchmark Posts
+Exemple de contenu :
 ```csv
 PARAM,AVG_TIME,RUN,FAILED
 10,3191.36ms,1,0
@@ -154,12 +128,13 @@ PARAM,AVG_TIME,RUN,FAILED
 1000,261.09ms,3,0
 ```
 
-**Interprétation :**
-* `PARAM` : Nombre de posts par utilisateur
-* Résultat contre-intuitif : plus de posts = meilleures performances
-* Problème d'optimisation avec petits datasets
+**Interprétation** :  
+- `PARAM` : Nombre de posts par utilisateur.  
+- Résultat contre-intuitif : plus de posts = meilleures performances.  
+- Problème d'optimisation avec petits datasets.
 
-### Fichier fanout.csv - Benchmark Followers
+### Fichier `fanout.csv` - Benchmark Followers
+Exemple de contenu :
 ```csv
 PARAM,AVG_TIME,RUN,FAILED
 10,2347.20ms,1,0
@@ -170,23 +145,23 @@ PARAM,AVG_TIME,RUN,FAILED
 100,3628.96ms,3,0
 ```
 
-**Interprétation :**
-* `PARAM` : Nombre de followers par utilisateur
-* Croissance linéaire du temps avec le nombre de followers
-* Impact important sur les performances
+**Interprétation** :  
+- `PARAM` : Nombre de followers par utilisateur.  
+- Croissance linéaire du temps avec le nombre de followers.  
+- Impact important sur les performances.
 
 ## Résultats du Benchmark
 
-### Performance en fonction de la concurrence
+### Performance en Fonction de la Concurrence
 ![Performance Concurrence](tinyinsta-benchmark/out/conc.png)
 
-### Performance en fonction du nombre de posts
+### Performance en Fonction du Nombre de Posts
 ![Performance Posts](tinyinsta-benchmark/out/post.png)
 
-### Performance en fonction du nombre de followers
+### Performance en Fonction du Nombre de Followers
 ![Performance Followers](tinyinsta-benchmark/out/fanout.png)
 
-## COMMANDES DE VÉRIFICATION
+## Commandes de Vérification
 ```bash
 # Vérifier que l'application répond
 curl "https://tinyinsta-benchmark-478021.ew.r.appspot.com/api/timeline?user=bench1"
@@ -203,29 +178,28 @@ head out/fanout.csv
 ls -la out/*.png
 ```
 
-## CONCLUSIONS TECHNIQUES
+## Conclusions Techniques
 
 ### Points Forts
-* Robustesse : 0 échec sur 18+ configurations testées
-* Scalabilité : Bonne performance jusqu'à 100 utilisateurs simultanés
-* Gestion données : Excellente avec volumes importants
+- **Robustesse** : 0 échec sur 18+ configurations testées.  
+- **Scalabilité** : Bonne performance jusqu'à 100 utilisateurs simultanés.  
+- **Gestion des données** : Excellente avec volumes importants.
 
 ### Points d'Amélioration
-* Cold start : Variance importante à faible charge
-* Optimisation fanout : Impact linéaire des followers
-* Petits datasets : Performance anormale avec peu de données
+- **Cold start** : Variance importante à faible charge.  
+- **Optimisation fanout** : Impact linéaire des followers.  
+- **Petits datasets** : Performance anormale avec peu de données.
 
 ### Recommandations
-* Implémenter un cache pour les timelines fréquentes
-* Limiter le nombre maximum de followers par utilisateur
-* Pré-chauffer l'application avant utilisation
+- Implémenter un cache pour les timelines fréquentes.  
+- Limiter le nombre maximum de followers par utilisateur.  
+- Pré-chauffer l'application avant utilisation.
 
 ## Auteur
-* **Étudiant** : Marius Mabulu
-* **Projet** : DONNÉES MASSIVES ET CLOUD - BENCHMARK
-* **Date** : Novembre 2025
-* **Dépôt Git** : https://github.com/kleper240/tinyinsta-benchmark
-
-**Dernière exécution** : November 17, 2025
+- **Étudiant** : Marius Mabulu  
+- **Projet** : DONNÉES MASSIVES ET CLOUD - BENCHMARK  
+- **Date** : Novembre 2025  
+- **Dépôt Git** : https://github.com/kleper240/tinyinsta-benchmark  
+- **Dernière exécution** : 17 novembre 2025  
 
 **Pour toute question** : Consulter le code source et les commentaires dans les scripts Python.
